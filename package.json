@@ -29,6 +29,7 @@
     "class-variance-authority": "^0.7.1",
     "framer-motion": "^12.23.12",
     "jsonwebtoken": "^9.0.2",
-    "lucide-react": "^0.539.0"
+    "lucide-react": "^0.539.0",
+    "n8n-nodes-base": "^1.14.1"
   }
 }

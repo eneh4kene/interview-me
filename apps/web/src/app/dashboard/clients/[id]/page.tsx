@@ -19,7 +19,8 @@ import {
   FileText,
   Briefcase,
   Users,
-  TrendingUp
+  TrendingUp,
+  Zap
 } from "lucide-react";
 import { apiService } from '../../../../lib/api';
 import EditClientForm from '../../../../components/EditClientForm';
@@ -47,6 +48,7 @@ export default function ClientProfile({ params }: { params: { id: string } }) {
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
   const [applicationModalMode, setApplicationModalMode] = useState<'view' | 'edit' | 'add'>('view');
+  const [aiApplying, setAiApplying] = useState(false);
 
   // Button click handlers
   const handleBackToDashboard = () => {
@@ -56,6 +58,30 @@ export default function ClientProfile({ params }: { params: { id: string } }) {
   const handleLinkedInClick = () => {
     if (client?.linkedinUrl) {
       window.open(client.linkedinUrl, '_blank');
+    }
+  };
+
+  const handleAiApply = async () => {
+    if (!client) return;
+    try {
+      setAiApplying(true);
+      // naive defaults for now: use default resume and all active preferences
+      const defaultResume = resumes.find(r => r.isDefault)?.id;
+      const activePrefIds = jobPreferences.filter(p => p.status === 'active').map(p => p.id);
+
+      const resp = await apiService.triggerAiApply(client.id, {
+        workerId: client.workerId,
+        resumeId: defaultResume,
+        jobPreferenceIds: activePrefIds,
+      });
+
+      if (!resp.success) throw new Error(resp.error);
+      alert('AI Apply triggered. You can monitor progress in n8n.');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to trigger AI Apply. Check server logs.');
+    } finally {
+      setAiApplying(false);
     }
   };
 
@@ -422,6 +448,10 @@ export default function ClientProfile({ params }: { params: { id: string } }) {
                   LinkedIn
                 </Button>
               )}
+              <Button onClick={handleAiApply} disabled={aiApplying} className="bg-green-600 hover:bg-green-700">
+                <Zap className="h-4 w-4 mr-2" />
+                {aiApplying ? 'Triggering...' : 'AI Apply'}
+              </Button>
               <Button onClick={handleEditProfile}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Profile

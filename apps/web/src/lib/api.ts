@@ -297,6 +297,14 @@ class ApiService {
             method: 'DELETE',
         });
     }
+
+    // AI Apply (n8n)
+    async triggerAiApply(clientId: string, payload: { workerId: string; jobPreferenceIds?: string[]; resumeId?: string; note?: string; }): Promise<ApiResponse<any>> {
+        return this.request(`/clients/${clientId}/ai-apply`, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    }
 }
 
 export const apiService = new ApiService(); 

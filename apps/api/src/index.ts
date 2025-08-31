@@ -27,6 +27,7 @@ console.log('ADZUNA_APP_ID:', process.env.ADZUNA_APP_ID);
 console.log('ADZUNA_APP_KEY:', process.env.ADZUNA_APP_KEY ? '***SET***' : 'NOT SET');
 console.log('JOOBLE_API_KEY:', process.env.JOOBLE_API_KEY ? '***SET***' : 'NOT SET');
 console.log('DATABASE_URL:', process.env.DATABASE_URL);
+console.log('N8N_AI_APPLY_WEBHOOK_URL:', process.env.N8N_AI_APPLY_WEBHOOK_URL ? '***SET***' : 'NOT SET');
 
 const app = express();
 const PORT = process.env.PORT || 3001;

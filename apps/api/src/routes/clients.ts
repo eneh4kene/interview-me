@@ -5,6 +5,10 @@ import { authenticate, authorize } from '../middleware/auth';
 import { clientAssignmentService } from '../services/clientAssignment';
 import { ApiResponse, Client } from '@interview-me/types';
 
+const N8N_WEBHOOK_URL = process.env.N8N_AI_APPLY_WEBHOOK_URL || '';
+const N8N_BASIC_AUTH_USER = process.env.N8N_BASIC_AUTH_USER;
+const N8N_BASIC_AUTH_PASSWORD = process.env.N8N_BASIC_AUTH_PASSWORD;
+
 const router = express.Router();
 
 // Mock data - in real app, this would come from database
@@ -358,4 +362,83 @@ router.get('/stats/dashboard', (req, res) => {
     res.json(response);
 });
 
-export default router; 
+// Trigger AI Apply via n8n webhook
+const aiApplySchema = z.object({
+    params: z.object({
+        id: z.string().min(1, 'Client ID is required'),
+    }),
+    body: z.object({
+        workerId: z.string().min(1, 'Worker ID is required'),
+        jobPreferenceIds: z.array(z.string()).optional(),
+        resumeId: z.string().optional(),
+        note: z.string().optional(),
+    })
+});
+
+router.post('/:id/ai-apply', validateRequest(aiApplySchema), async (req, res) => {
+    try {
+        if (!N8N_WEBHOOK_URL) {
+            return res.status(500).json({ success: false, error: 'N8N_AI_APPLY_WEBHOOK_URL not configured' });
+        }
+
+        const clientId = req.params.id;
+        const { workerId, jobPreferenceIds, resumeId, note } = req.body;
+
+        // Lookup client basic info (mock for now)
+        const client = mockClients.find(c => c.id === clientId);
+        if (!client) {
+            return res.status(404).json({ success: false, error: 'Client not found' });
+        }
+
+        // Build payload for n8n
+        const payload = {
+            event: 'ai_apply_requested',
+            client: {
+                id: client.id,
+                name: client.name,
+                email: client.email,
+                phone: client.phone,
+                linkedinUrl: client.linkedinUrl,
+            },
+            context: {
+                workerId,
+                jobPreferenceIds: jobPreferenceIds || [],
+                resumeId: resumeId || null,
+                note: note || null,
+                requestedAt: new Date().toISOString(),
+            }
+        };
+
+        // Build headers (include basic auth if configured)
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (N8N_BASIC_AUTH_USER && N8N_BASIC_AUTH_PASSWORD) {
+            const creds = Buffer.from(`${N8N_BASIC_AUTH_USER}:${N8N_BASIC_AUTH_PASSWORD}`).toString('base64');
+            headers['Authorization'] = `Basic ${creds}`;
+        }
+
+        // Post to n8n webhook using Node's global fetch
+        const n8nResp = await (global as any).fetch(N8N_WEBHOOK_URL, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
+        });
+
+        const text = await n8nResp.text();
+
+        if (!n8nResp.ok) {
+            return res.status(502).json({ success: false, error: `n8n error: ${text}` });
+        }
+
+        const response: ApiResponse = {
+            success: true,
+            data: { forwarded: true },
+            message: 'AI Apply request forwarded to automation engine'
+        };
+        res.status(202).json(response);
+    } catch (error) {
+        console.error('AI Apply trigger failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to trigger AI Apply' });
+    }
+});
+
+export default router;
