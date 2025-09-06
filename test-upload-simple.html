@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Resume Upload</title>
+</head>
+
+<body>
+    <h1>Test Resume Upload</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="fileInput" name="file" accept=".pdf,.doc,.docx" required>
+        <input type="text" name="clientId" value="550e8400-e29b-41d4-a716-446655440001" placeholder="Client ID">
+        <input type="text" name="name" value="test-resume" placeholder="Resume Name">
+        <input type="checkbox" name="isDefault" value="true" checked> Default Resume
+        <button type="submit">Upload Resume</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+
+            try {
+                const response = await fetch('http://localhost:3001/api/resumes', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <h3>Result:</h3>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h3>Error:</h3>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+    </script>
+</body>
+
+</html>
